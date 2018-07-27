@@ -1,1 +1,3 @@
 DATADIR = "F:/laneline"
+HEIGHT = 640
+WIDTH = 480
