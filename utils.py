@@ -3,11 +3,49 @@ import config
 import cv2
 import numpy as np
 from sklearn.utils import shuffle
+import tensorflow as tf
+from sklearn.model_selection import KFold
+import os
+import logging
+from math import ceil
 
 #含中文路径读取图片方法
 def cv_imread(filepath):
     img = cv2.imdecode(np.fromfile(filepath,dtype=np.uint8),-1)
     return img
+
+def get_logger(filepath,level=logging.INFO):
+    dir = os.path.dirname(filepath)
+    if not os.path.exists(dir):
+        os.mkdir(dir)
+    logger = logging.getLogger(__name__)
+    logger.setLevel(level)
+
+    # create a file handler
+    handler = logging.FileHandler(filepath)
+    handler.setLevel(logging.INFO)
+
+    # create a logging format
+    #formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    #handler.setFormatter(formatter)
+
+    # add the handlers to the logger
+    logger.addHandler(handler)
+    return logger
+
+#初始化sess,或回复保存的sess
+def start_or_restore_training(sess,saver,checkpoint_dir):
+    ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
+    if ckpt and ckpt.model_checkpoint_path:
+        print('Restore the model from checkpoint %s' % ckpt.model_checkpoint_path)
+        # Restores from checkpoint
+        saver.restore(sess, ckpt.model_checkpoint_path)
+        step = int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1])
+    else:
+        sess.run(tf.global_variables_initializer())
+        step = 1
+        print('start training from new state')
+    return sess,step
 
 def extract_keypoints(filepath):
     with open(filepath, 'r') as file:
@@ -24,13 +62,13 @@ def convert_keypoints_to_label(keypoints):
     left_x = []
     right_x = []
     for i, point in enumerate(keypoints):
-        y_cord = float(point[1])/config.WIDTH
+        y_cord = float(point[1])
         if not y_cord in y:
             y.append(y_cord)
         if i % 2 == 0:
-            left_x.append(float(point[0])/config.HEIGHT)
+            left_x.append(float(point[0]))
         else:
-            right_x.append(float(point[0])/config.HEIGHT)
+            right_x.append(float(point[0]))
     y.extend(left_x)
     y.extend(right_x)
     return np.array(y)
@@ -44,14 +82,15 @@ def get_feature(imgpath):
     img = cv_imread(imgpath)
     return (img-128.)/255.
 
-def data_gen(batch_size=128):
-    img_paths = glob.glob(config.DATADIR + "/train/*/*/*.jpg")
-    label_paths = glob.glob(config.DATADIR + "/train/*/*/*/*.txt")
+def data_generator(img_paths,label_paths,batch_size=64,is_shuffle=True):
+
     num_sample = len(img_paths)
-    img_paths,label_paths = shuffle(img_paths,label_paths)
+    if is_shuffle:
+        img_paths,label_paths = shuffle(img_paths,label_paths)
     while True:
         for offset in range(0,batch_size,num_sample):
-            img_paths, label_paths = shuffle(img_paths, label_paths)
+            if is_shuffle:
+                img_paths, label_paths = shuffle(img_paths, label_paths)
             batch_img_paths = img_paths[offset : offset+batch_size]
             batch_label_paths = label_paths[offset : offset+batch_size]
             features = []
@@ -61,16 +100,24 @@ def data_gen(batch_size=128):
                 labels.append(get_label(labelpath))
             yield np.array(features), np.array(labels)
 
+def validation(sess,net,img_paths,label_paths,batch_size=64):
+    data_gen = data_generator(img_paths,label_paths,batch_size=batch_size,is_shuffle=False)
+    num_it = ceil( len(img_paths)/batch_size )
+    total_loss = 0
+    for i in range(num_it):
+        features,labels = next(data_gen)
+        extract_features = sess.run(net.vgg_no_top, feed_dict={net.x: features})
+        total_loss += sess.run(net.loss, feed_dict={net.f: extract_features, net.y: labels, net.rate: 1.0})
+    return total_loss/num_it
 
 
 
-
-
-generator = data_gen(batch_size=32)
-for i in range(1000):
-    features,labels = next(generator)
-    print(features.shape)
-    print(labels.shape)
+# generator = data_generator(batch_size=1)
+# for i in range(1000):
+#     features,labels = next(generator)
+#     print(features.shape)
+#     print(labels.shape)
+#     print(labels)
 
 # label_paths = glob.glob(config.DATADIR + "/train/*/*/*/*.txt")
 # # extract_keypoints(label_paths[0])
