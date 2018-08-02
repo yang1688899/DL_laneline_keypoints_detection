@@ -30,19 +30,19 @@ with tf.Session() as sess:
 
         extract_features = sess.run(net.vgg_no_top, feed_dict={net.x:features})
 
-        sess.run(train_step,feed_dict={net.f:extract_features, net.y:labels, net.rate:0.5})
-
-        step += 1
-
-        if step%100==0:
-            train_loss = sess.run(net.loss,feed_dict={net.x:extract_features, net.y:labels, net.rate:1.})
-            valid_loss = utils.validation(sess, net, valid_img_paths, valid_label_paths, batch_size=config.BATCH_SIZE)
-            duration = time.time() - start_time
-            logger.info("step %d: trainning loss is %g, validation loss is %g (%0.3f sec)" % (step, train_loss,valid_loss, duration))
-            start_time = time.time()
-        if step%1000==0:
-            saver.save(sess, config.CHECKFILE, global_step=step)
-            print('writing checkpoint at step %s' % step)
+        # sess.run(train_step,feed_dict={net.f:extract_features, net.y:labels, net.rate:0.5})
+        #
+        # step += 1
+        #
+        # if step%100==0:
+        #     train_loss = sess.run(net.loss,feed_dict={net.f:extract_features, net.y:labels, net.rate:1.})
+        #     valid_loss = utils.validation(sess, net, valid_img_paths, valid_label_paths, batch_size=config.BATCH_SIZE)
+        #     duration = time.time() - start_time
+        #     logger.info("step %d: trainning loss is %g, validation loss is %g (%0.3f sec)" % (step, train_loss,valid_loss, duration))
+        #     start_time = time.time()
+        # if step%1000==0:
+        #     saver.save(sess, config.CHECKFILE, global_step=step)
+        #     print('writing checkpoint at step %s' % step)
 
 
 

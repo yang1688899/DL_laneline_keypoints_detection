@@ -55,12 +55,12 @@ def net(x,rate):
 class Network:
     def __init__(self):
         self.x = tf.placeholder(dtype=tf.float32, shape=[None, 480, 640, 3], name="input_x")
-        vgg = tf.keras.applications.InceptionV3(include_top=False, input_tensor=x)
+        vgg = tf.keras.applications.VGG19(include_top=False, input_tensor=self.x)
         self.vgg_no_top = vgg.output
 
         self.f = tf.placeholder(dtype=tf.float32, shape=[None, 15, 20, 512], name="input_f")
         self.y = tf.placeholder(dtype=tf.float32, shape=[None, 27], name="input_y")
-        self.rate = tf.placeholder(dtype=tf.float32, shape=[1], name="rate")
+        self.rate = tf.placeholder(dtype=tf.float32, name="rate")
         self.prediction = net(self.f,self.rate)
 
         self.loss = tf.reduce_mean(tf.square(self.prediction - self.y))
