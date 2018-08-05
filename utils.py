@@ -85,17 +85,60 @@ def get_from_tfrecords(filepaths,num_epoch=None):
         'width': tf.FixedLenFeature([], tf.int64),
         'depth': tf.FixedLenFeature([], tf.int64),
         'feature': tf.FixedLenFeature([], tf.string),
-        'label': tf.FixedLenFeature([], tf.float64)
+        'label': tf.FixedLenFeature([27], tf.float32)
     })
     label = tf.cast(example['label'], tf.float32)
-    img = tf.decode_raw(example['img'], tf.uint8)
-    img = tf.reshape(img, [
+    label = tf.reshape(label,[27])
+    feature = tf.decode_raw(example['feature'], tf.float32)
+    feature = tf.reshape(feature, [
         tf.cast(example['height'], tf.int32),
         tf.cast(example['width'], tf.int32),
         tf.cast(example['depth'], tf.int32)])
 
     # label=example['label']
-    return img, label
+    return feature, label
+
+# 根据队列流数据格式，解压出一张图片后，输入一张图片，对其做预处理、及样本随机扩充
+def get_batch(img, label, batch_size, crop_size, is_shuffle=True):
+    # 数据扩充变换
+    img = tf.random_crop(img, [15, 20, 512])  # 随机裁剪
+    # img = tf.image.random_flip_up_down(img)  # 上下随机翻转
+    # distorted_image = tf.image.random_brightness(distorted_image,max_delta=63)#亮度变化
+    # distorted_image = tf.image.random_contrast(distorted_image,lower=0.2, upper=1.8)#对比度变化
+
+    # 生成batch
+    # shuffle_batch的参数：capacity用于定义shuttle的范围，如果是对整个训练数据集，获取batch，那么capacity就应该够大
+    # 保证数据打的足够乱
+    if is_shuffle:
+        img_batch, label_batch = tf.train.shuffle_batch([img, label], batch_size=batch_size,
+                                                     num_threads=16, capacity=500, min_after_dequeue=100)
+    else:
+        img_batch, label_batch=tf.train.batch([img, label],batch_size=batch_size)
+
+
+    # 调试显示
+    # tf.image_summary('images', images)
+    return img_batch, label_batch
+
+
+#测试tfrecords中解压获取数据是否正常
+def test_tfrecords(filepaths):
+    feature,label = get_from_tfrecords(filepaths,num_epoch=None)
+    feature_batch,label_batch = get_batch(feature,label,32,800,is_shuffle=False)
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(coord=coord)
+        # for i in range(10000):
+        #     feature_np,label_np = sess.run([feature,label])
+            # cv2.imshow("temp",img_np)
+            # cv2.waitKey()
+            # print(feature_np.shape, label_np.shape)
+            # print(label_np)
+
+        img_batch_r,label_batch_r = sess.run([feature_batch,label_batch])
+        print(img_batch_r.shape)
+        print(label_batch_r.shape)
 
 def extract_keypoints(filepath):
     with open(filepath, 'r') as file:
@@ -149,14 +192,11 @@ def data_generator(img_paths,label_paths,batch_size=64,is_shuffle=True):
                 labels.append(get_label(labelpath))
             yield np.array(features), np.array(labels)
 
-def validation(sess,net,img_paths,label_paths,batch_size=64):
-    data_gen = data_generator(img_paths,label_paths,batch_size=batch_size,is_shuffle=False)
-    num_it = ceil( len(img_paths)/batch_size )
+def validation(sess,valid_loss,rate,batch_size=64):
+    num_it = ceil( 800/batch_size )
     total_loss = 0
     for i in range(num_it):
-        features,labels = next(data_gen)
-        extract_features = sess.run(net.vgg_no_top, feed_dict={net.x: features})
-        total_loss += sess.run(net.loss, feed_dict={net.f: extract_features, net.y: labels, net.rate: 1.0})
+        total_loss += sess.run(valid_loss, feed_dict={rate: 1.0})
     return total_loss/num_it
 
 
@@ -173,6 +213,8 @@ def validation(sess,net,img_paths,label_paths,batch_size=64):
 # for i in range(100):
 #     print(label_paths[i])
 #     get_label(label_paths[i])
+
+# test_tfrecords(["./record_0/train.tfrecords"])
 
 
 

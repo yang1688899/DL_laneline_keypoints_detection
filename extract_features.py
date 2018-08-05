@@ -13,6 +13,7 @@ label_paths = np.array(glob.glob(config.DATADIR + '/train/*/*/*/*.txt'))
 
 img_paths,label_paths = shuffle(img_paths,label_paths)
 
+#由于训练数据较少，使用cross_validation可以减小过拟合
 kf = KFold(n_splits=4)
 
 i=0
@@ -34,4 +35,4 @@ with tf.Session() as sess:
                                    savefile=record_dir + "/valid.tfrecords")
         i+=1
 
-#TODO:测试tfrecords解压与压缩前数据相同
+#
