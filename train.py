@@ -20,9 +20,14 @@ logger = utils.get_logger("./log/info.log")
 
 with tf.Session() as sess:
     sess, step = utils.start_or_restore_training(sess, saver, checkpoint_dir=config.CKECKDIR)
+    summary_all = tf.summary.merge_all()
+    summary_writer = tf.summary.FileWriter("./summary", graph=sess.graph)
     start_time = time.time()
     print("trainning......")
+
     while True:
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(coord=coord)
         train_features_batch,train_labels_batch = sess.run([train_features, train_labels])
 
         sess.run(train_step,feed_dict={net.x:train_features_batch, net.y:train_labels_batch, net.rate:0.5})
@@ -30,7 +35,8 @@ with tf.Session() as sess:
         step += 1
 
         if step%100==0:
-            train_loss = sess.run(net.loss,feed_dict={net.x:train_features_batch, net.y:train_labels_batch, net.rate:1.})
+            train_loss,summary_info = sess.run([net.loss,summary_all],feed_dict={net.x:train_features_batch, net.y:train_labels_batch, net.rate:1.})
+            summary_writer.add_summary(summary_info,global_step=step)
             valid_loss = utils.validation(sess, net, "./record_0/valid.tfrecords", batch_size=config.BATCH_SIZE)
             duration = time.time() - start_time
             logger.info("step %d: trainning loss is %g, validation loss is %g (%0.3f sec)" % (step, train_loss,valid_loss, duration))
@@ -38,6 +44,4 @@ with tf.Session() as sess:
         if step%1000==0:
             saver.save(sess, config.CHECKFILE, global_step=step)
             print('writing checkpoint at step %s' % step)
-
-
 

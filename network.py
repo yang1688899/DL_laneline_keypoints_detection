@@ -60,6 +60,7 @@ class Network:
         self.prediction = net(self.x,self.rate)
 
         self.loss = tf.reduce_mean(tf.square(self.prediction - self.y))
+        tf.summary.scalar("loss",self.loss)
 
 
 
