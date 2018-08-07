@@ -149,14 +149,14 @@ def data_generator(img_paths,label_paths,batch_size=64,is_shuffle=True):
                 labels.append(get_label(labelpath))
             yield np.array(features), np.array(labels)
 
-def validation(sess,net,img_paths,label_paths,batch_size=64):
-    data_gen = data_generator(img_paths,label_paths,batch_size=batch_size,is_shuffle=False)
-    num_it = ceil( len(img_paths)/batch_size )
+def validation(sess,net,valid_tf_path,batch_size=64):
+    valid_feature, valid_label = get_from_tfrecords(["./record_0/valid.tfrecords"])
+    valid_features, valid_labels = get_batch(valid_feature, valid_label, config.BATCH_SIZE, 800, is_shuffle=False)
+    num_it = ceil( 800/batch_size )
     total_loss = 0
     for i in range(num_it):
-        features,labels = next(data_gen)
-        extract_features = sess.run(net.vgg_no_top, feed_dict={net.x: features})
-        total_loss += sess.run(net.loss, feed_dict={net.f: extract_features, net.y: labels, net.rate: 1.0})
+        valid_features_batch,valid_labels_batch = sess.run([valid_features, valid_labels])
+        total_loss += sess.run(net.loss, feed_dict={net.x: valid_features_batch, net.y: valid_labels_batch, net.rate: 1.0})
     return total_loss/num_it
 
 
