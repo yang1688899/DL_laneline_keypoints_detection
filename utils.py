@@ -56,7 +56,7 @@ def convert_to_tfrecords(sess,net,img_paths,labels_paths,savefile):
     for i in range(num_it):
         features,labels = next(data_gen)
         #提取特征
-        extract_features = sess.run(net.vgg_no_top,feed_dict={net.x:features})
+        extract_features = sess.run(net.vgg_no_top,feed_dict={net.i:features})
         for f,l in zip(extract_features,labels):
             height, width, depth = f.shape
 
@@ -135,13 +135,13 @@ def convert_keypoints_to_label(keypoints):
     left_x = []
     right_x = []
     for i, point in enumerate(keypoints):
-        y_cord = float(point[1])
+        y_cord = float(point[1])/config.WIDTH
         if not y_cord in y:
             y.append(y_cord)
         if i % 2 == 0:
-            left_x.append(float(point[0]))
+            left_x.append(float(point[0])/config.HEIGHT)
         else:
-            right_x.append(float(point[0]))
+            right_x.append(float(point[0])/config.HEIGHT)
     y.extend(left_x)
     y.extend(right_x)
     return np.array(y)
@@ -191,10 +191,10 @@ def validation(sess,net,valid_features, valid_labels,batch_size=64):
 #     print(labels)
 
 # label_paths = glob.glob(config.DATADIR + "/train/*/*/*/*.txt")
-# # extract_keypoints(label_paths[0])
+# # labels = extract_keypoints(label_paths[0])
 # for i in range(100):
 #     print(label_paths[i])
-#     get_label(label_paths[i])
+#     print(get_label(label_paths[i]))
 
 
 

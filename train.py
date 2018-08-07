@@ -44,7 +44,7 @@ with tf.Session() as sess:
             print("step %d: trainning loss is %g, validation loss is %g (%0.3f sec)" % (step, train_loss,valid_loss, duration))
             start_time = time.time()
         if step%1000==0:
-            saver.save(sess, config.CHECKFILE, global_step=step)
+            saver.save(sess,'./checkpoints/model.ckpt', global_step=step)
             print('writing checkpoint at step %s' % step)
 
 

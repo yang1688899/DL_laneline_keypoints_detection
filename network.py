@@ -54,7 +54,11 @@ def net(x,rate):
 
 class Network:
     def __init__(self):
-        self.x = tf.placeholder(dtype=tf.float32, shape=[None, 15, 20, 512], name="input_f")
+        self.i = tf.placeholder(dtype=tf.float32, shape=[None, 480, 640, 3], name="input_i")
+        vgg = tf.keras.applications.VGG19(include_top=False, input_tensor=self.i)
+        self.vgg_no_top = vgg.output
+
+        self.x = tf.placeholder(dtype=tf.float32, shape=[None, 15, 20, 512], name="input_x")
         self.y = tf.placeholder(dtype=tf.float32, shape=[None, 27], name="input_y")
         self.rate = tf.placeholder(dtype=tf.float32, name="rate")
         self.prediction = net(self.x,self.rate)
