@@ -97,6 +97,28 @@ def get_from_tfrecords(filepaths,num_epoch=None):
     # label=example['label']
     return img, label
 
+# 根据队列流数据格式，解压出一张图片后，输入一张图片，对其做预处理、及样本随机扩充
+def get_batch(img, label, batch_size, crop_size, is_shuffle=True):
+    # 数据扩充变换
+    img = tf.random_crop(img, [15, 20, 512])  # 随机裁剪
+    # img = tf.image.random_flip_up_down(img)  # 上下随机翻转
+    # distorted_image = tf.image.random_brightness(distorted_image,max_delta=63)#亮度变化
+    # distorted_image = tf.image.random_contrast(distorted_image,lower=0.2, upper=1.8)#对比度变化
+
+    # 生成batch
+    # shuffle_batch的参数：capacity用于定义shuttle的范围，如果是对整个训练数据集，获取batch，那么capacity就应该够大
+    # 保证数据打的足够乱
+    if is_shuffle:
+        img_batch, label_batch = tf.train.shuffle_batch([img, label], batch_size=batch_size,
+                                                     num_threads=16, capacity=500, min_after_dequeue=100)
+    else:
+        img_batch, label_batch=tf.train.batch([img, label],batch_size=batch_size)
+
+
+    # 调试显示
+    # tf.image_summary('images', images)
+    return img_batch, label_batch
+
 def extract_keypoints(filepath):
     with open(filepath, 'r') as file:
         data = file.readlines()
