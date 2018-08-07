@@ -85,17 +85,18 @@ def get_from_tfrecords(filepaths,num_epoch=None):
         'width': tf.FixedLenFeature([], tf.int64),
         'depth': tf.FixedLenFeature([], tf.int64),
         'feature': tf.FixedLenFeature([], tf.string),
-        'label': tf.FixedLenFeature([], tf.float64)
+        'label': tf.FixedLenFeature([27], tf.float32)
     })
     label = tf.cast(example['label'], tf.float32)
-    img = tf.decode_raw(example['img'], tf.uint8)
-    img = tf.reshape(img, [
+    label = tf.reshape(label,[27])
+    feature = tf.decode_raw(example['feature'], tf.float32)
+    feature = tf.reshape(feature, [
         tf.cast(example['height'], tf.int32),
         tf.cast(example['width'], tf.int32),
         tf.cast(example['depth'], tf.int32)])
 
     # label=example['label']
-    return img, label
+    return feature, label
 
 # 根据队列流数据格式，解压出一张图片后，输入一张图片，对其做预处理、及样本随机扩充
 def get_batch(img, label, batch_size, crop_size, is_shuffle=True):
@@ -171,9 +172,8 @@ def data_generator(img_paths,label_paths,batch_size=64,is_shuffle=True):
                 labels.append(get_label(labelpath))
             yield np.array(features), np.array(labels)
 
-def validation(sess,net,valid_tf_path,batch_size=64):
-    valid_feature, valid_label = get_from_tfrecords(["./record_0/valid.tfrecords"])
-    valid_features, valid_labels = get_batch(valid_feature, valid_label, config.BATCH_SIZE, 800, is_shuffle=False)
+def validation(sess,net,valid_features, valid_labels,batch_size=64):
+
     num_it = ceil( 800/batch_size )
     total_loss = 0
     for i in range(num_it):
@@ -195,9 +195,6 @@ def validation(sess,net,valid_tf_path,batch_size=64):
 # for i in range(100):
 #     print(label_paths[i])
 #     get_label(label_paths[i])
-
-
-
 
 
 
