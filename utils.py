@@ -35,6 +35,7 @@ def get_logger(filepath,level=logging.INFO):
 #初始化sess,或回复保存的sess
 def start_or_restore_training(sess,saver,checkpoint_dir):
     ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
+    print(ckpt)
     if ckpt and ckpt.model_checkpoint_path:
         print('Restore the model from checkpoint %s' % ckpt.model_checkpoint_path)
         # Restores from checkpoint
@@ -180,6 +181,34 @@ def validation(sess,net,valid_features, valid_labels,batch_size=64):
         valid_features_batch,valid_labels_batch = sess.run([valid_features, valid_labels])
         total_loss += sess.run(net.loss, feed_dict={net.x: valid_features_batch, net.y: valid_labels_batch, net.rate: 1.0})
     return total_loss/num_it
+
+def make_predict(sess, net, img):
+    img = np.array([img])
+    features = sess.run(net.vgg_no_top, feed_dict={net.i: img})
+    prediction = sess.run(net.prediction, feed_dict={net.x: features, net.rate: 1.0})
+    return prediction
+
+def prediction2cords(prediction):
+    prediction = prediction.reshape([-1])
+    y = prediction[:9]
+    left_x = prediction[9:18]
+    right_x = prediction[18:]
+
+    y *= 480
+    left_x *= 640
+    right_x *= 640
+
+    left_line = np.int32([[left_x[i],y[i]] for i in range(len(y))])
+    right_line = np.int32([[right_x[i],y[i]] for i in range(len(y))])
+    return [left_line[1:],right_line[1:]]
+
+def draw_lines(img,lines):
+    draw_img = np.copy(img)
+    cv2.polylines(draw_img, lines, isClosed=False, color=(0, 255, 0), thickness=2, lineType=8)
+    for i in range(len(lines[0])):
+        cv2.circle(draw_img,tuple(lines[0][i]),2,color=(0,0,255),thickness=2)
+        cv2.circle(draw_img, tuple(lines[1][i]), 2, color=(0, 0, 255), thickness=2)
+    return draw_img
 
 
 
