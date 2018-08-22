@@ -7,22 +7,22 @@ from sklearn.model_selection import train_test_split
 import glob
 from sklearn.utils import shuffle
 import os
+import numpy as np
 
-rate = tf.placeholder(dtype=tf.float32,name="rate")
-train_feature, train_label = utils.get_from_tfrecords(["./record_0/train.tfrecords"])
-train_features, train_labels = utils.get_batch(train_feature, train_label, config.BATCH_SIZE, 800)
-prediction = network.net(train_features,rate)
-train_loss = tf.reduce_mean(tf.square(prediction - train_labels))
+img_paths = np.array(glob.glob(config.DATADIR + '/train/*/*/*.jpg'))
+label_paths = np.array(glob.glob(config.DATADIR + '/train/*/*/*/*.txt'))
 
-valid_feature, valid_label = utils.get_from_tfrecords(["./record_0/valid.tfrecords"])
-valid_features,valid_labels = utils.get_batch(valid_feature,valid_label,config.BATCH_SIZE,800,is_shuffle=False)
-valid_prediction = network.net(valid_features,rate)
-valid_loss = tf.reduce_mean(tf.square(valid_prediction - valid_labels))
+img_paths,label_paths = shuffle(img_paths,label_paths)
 
-train_step = tf.train.AdamOptimizer().minimize(train_loss)
+net = network.Network()
 
-saver = tf.train.Saver()
-logger = utils.get_logger("./log/info.log")
+
+train_loss = tf.reduce_mean(tf.square(net.prediction - net.y))
+bottom_var = tf.get_collection(tf.GraphKyes.TRAINABLE_VARIABLES, scope='bottom')
+train_step_freeze_top = tf.train.AdamOptimizer(1e-3).minimize(train_loss,var_list=bottom_var)
+train_step_all = tf.train.AdamOptimizer(1e-4).minimize(train_loss)
+
+
 
 with tf.Session() as sess:
     sess, step = utils.start_or_restore_training(sess, saver, checkpoint_dir=config.CKECKDIR)
